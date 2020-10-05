@@ -1,0 +1,28 @@
+image: ubuntu:20.04
+
+stages:
+  - deploy
+
+variables:
+
+  SSH_USERNAME: "root"
+  SSH_HOST: "161.35.195.240"
+
+dev_deploy:
+
+  stage: deploy
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | ssh-add - > ~/.ssh/id_rsa
+    - chmod 400 ~/.ssh/id_rsa
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+
+  script:   
+    - scp -r ./blog $SSH_USERNAME@$SSH_HOST:/var/www/kub_it
+    - ssh $SSH_USERNAME@$SSH_HOST 'pwd'
+    - ssh $SSH_USERNAME@$SSH_HOST 'cd /var/www/kub_it/ && docker-compose up -d'
